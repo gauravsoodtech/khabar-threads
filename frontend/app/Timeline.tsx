@@ -32,7 +32,7 @@ export default function TimelineChart({ clusters, now, selectedId, onSelect }: P
 
   const { t0, t1 } = timeRange(clusters);
   const x = (t: number) => ((t - t0) / (t1 - t0)) * width;
-  const { placed, laneCount } = packLanes(clusters, x);
+  const { placed, laneCount } = packLanes(clusters, x, width);
   const ticks = makeTicks(t0, t1);
 
   return (
@@ -59,7 +59,7 @@ export default function TimelineChart({ clusters, now, selectedId, onSelect }: P
               </div>
             )}
 
-            {placed.map(({ c, lane, left, barWidth }) => {
+            {placed.map(({ c, lane, left, barWidth, labelLeft }) => {
               const barH = 12 + Math.round(c.intensity * 12); // stretch goal: bigger story, bolder bar
               const laneTop = AXIS_H + lane * LANE_H;
               const selected = c.id === selectedId;
@@ -73,9 +73,10 @@ export default function TimelineChart({ clusters, now, selectedId, onSelect }: P
                   style={{ left, top: laneTop, height: LANE_H, width: Math.max(barWidth, 8) }}
                 >
                   <span
-                    className={`absolute top-1 left-0 text-xs font-medium whitespace-nowrap transition ${
+                    className={`absolute top-1 text-xs font-medium whitespace-nowrap transition ${
                       selected ? "text-indigo-700" : "text-slate-800 group-hover:text-indigo-700"
                     }`}
+                    style={{ left: labelLeft - left }}
                   >
                     {c.label}
                     <span className="ml-1 text-slate-400">{c.count}</span>
@@ -124,24 +125,28 @@ function timeRange(clusters: TimelineCluster[]) {
   return { t0: start - pad, t1: end + pad };
 }
 
-function packLanes(clusters: TimelineCluster[], x: (t: number) => number) {
+function packLanes(clusters: TimelineCluster[], x: (t: number) => number, width: number) {
   const items = clusters
     .map((c) => {
       const left = x(+new Date(c.start));
       const barWidth = Math.max(MIN_BAR_PX, x(+new Date(c.end)) - left);
-      const labelWidth = c.label.length * 6.4 + 36; // rough text measure, enough to avoid label collisions
-      return { c, left, barWidth, footprint: Math.max(barWidth, labelWidth) };
+      const labelWidth = c.label.length * 6.4 + 36; // rough text measure, enough to avoid collisions
+      const labelLeft = clamp(left, 0, Math.max(0, width - labelWidth)); // slide left rather than clip at the edge
+      // the horizontal room this item needs in its lane: bar and label together
+      const from = Math.min(left, labelLeft);
+      const to = Math.max(left + barWidth, labelLeft + labelWidth);
+      return { c, left, barWidth, labelLeft, from, to };
     })
-    .sort((a, b) => b.c.count - a.c.count || a.left - b.left); // biggest stories take the top lanes
+    .sort((a, b) => b.c.count - a.c.count || a.from - b.from); // biggest stories take the top lanes
 
   const laneEnds: number[] = [];
   const placed = items.map((item) => {
-    let lane = laneEnds.findIndex((end) => end + 16 <= item.left);
+    let lane = laneEnds.findIndex((end) => end + 16 <= item.from);
     if (lane === -1) {
       lane = laneEnds.length;
       laneEnds.push(0);
     }
-    laneEnds[lane] = item.left + item.footprint;
+    laneEnds[lane] = item.to;
     return { ...item, lane };
   });
   return { placed, laneCount: laneEnds.length };
