@@ -1,0 +1,20 @@
+# secrets and local config
+.env
+.env.*
+!.env.example
+
+# python
+.venv/
+__pycache__/
+*.pyc
+
+# node
+node_modules/
+.next/
+.vercel/
+npm-debug.log*
+
+# editors / os / local tooling
+.DS_Store
+Thumbs.db
+.claude/

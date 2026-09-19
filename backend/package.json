@@ -1,0 +1,27 @@
+{
+  "name": "news-pulse-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "News Pulse REST API: serves clusters, articles and timeline data; triggers the Python scraper",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "node --watch --env-file-if-exists=../.env src/index.ts",
+    "start": "node src/index.ts",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "pg": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.5.0",
+    "@types/pg": "^8.15.5",
+    "typescript": "^5.9.2"
+  }
+}

@@ -1,0 +1,16 @@
+# Render Blueprint: New > Blueprint > pick this repo. Render prompts for the two sync:false values.
+services:
+  - type: web
+    name: news-pulse-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false # Neon connection string, pasted in the dashboard, never committed
+      - key: CORS_ORIGIN
+        sync: false # the Vercel frontend URL (use * until it exists)
+      - key: PYTHON_BIN
+        value: python
