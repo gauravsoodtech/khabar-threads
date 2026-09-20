@@ -7,8 +7,8 @@ project "News Pulse"; this is my build of it.)
 
 | | |
 |---|---|
-| Live frontend | _pending deploy_ |
-| Live API | _pending deploy_ (`GET /` lists the endpoints) |
+| Live frontend | https://khabar-threads.vercel.app |
+| Live API | https://khabar-threads-api.onrender.com (`GET /` lists the endpoints; free tier, first request after idle takes up to a minute) |
 | Repo layout | [`scraper/`](scraper) Python · [`backend/`](backend) Node.js · [`frontend/`](frontend) Next.js |
 
 ## Architecture
