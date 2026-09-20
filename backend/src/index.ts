@@ -80,7 +80,7 @@ app.get("/clusters/:id", async (req, res) => {
 // Shaped for plotting: every cluster is a span (start, end) with a size metric, plus the
 // individual article times so the frontend can filter by source without another request.
 app.get("/timeline", async (_req, res) => {
-  const [clusters, sources] = await Promise.all([
+  const [clusters, sources, last] = await Promise.all([
     pool.query(`
       SELECT c.id, c.label,
              COUNT(a.id)::int                              AS count,
@@ -88,19 +88,21 @@ app.get("/timeline", async (_req, res) => {
              MAX(a.published_at)                           AS "end",
              array_agg(DISTINCT a.source ORDER BY a.source) AS sources,
              (array_agg(a.title ORDER BY a.published_at DESC))[1] AS latest_title,
-             json_agg(json_build_object('t', a.published_at, 'source', a.source)
+             json_agg(json_build_object('t', a.published_at, 'source', a.source, 'title', a.title)
                       ORDER BY a.published_at)             AS points
       FROM clusters c
       JOIN articles a ON a.cluster_id = c.id
       GROUP BY c.id
       ORDER BY start`),
     pool.query("SELECT source, COUNT(*)::int AS count FROM articles GROUP BY source ORDER BY source"),
+    pool.query("SELECT MAX(fetched_at) AS last_fetch FROM articles"),
   ]);
   const max = Math.max(1, ...clusters.rows.map((c) => c.count as number));
   const starts = clusters.rows.map((c) => +new Date(c.start));
   const ends = clusters.rows.map((c) => +new Date(c.end));
   res.json({
     generatedAt: new Date().toISOString(),
+    lastFetch: last.rows[0]?.last_fetch ?? null,
     range: clusters.rows.length
       ? { start: new Date(Math.min(...starts)).toISOString(), end: new Date(Math.max(...ends)).toISOString() }
       : null,
