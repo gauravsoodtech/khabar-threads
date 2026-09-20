@@ -1,7 +1,9 @@
-# News Pulse
+# Khabar Threads
 
 A small system that pulls live articles from four news RSS feeds, groups related articles into
-topic clusters, and shows those clusters as a timeline.
+topic clusters, and shows those clusters as a timeline. *Khabar* is Hindi for news; each cluster is
+a thread of articles from different outlets about the same story. (The assessment brief calls the
+project "News Pulse"; this is my build of it.)
 
 | | |
 |---|---|
@@ -38,7 +40,7 @@ Vercel that talks to the API directly from the browser.
 Prerequisites: Node 22.18+ (24 recommended), Python 3.11+, a Postgres URL (a free Neon project works).
 
 ```bash
-git clone https://github.com/gauravsoodtech/news-pulse && cd news-pulse
+git clone https://github.com/gauravsoodtech/khabar-threads && cd khabar-threads
 cp .env.example .env            # fill in DATABASE_URL; the other defaults work locally
 
 # scraper

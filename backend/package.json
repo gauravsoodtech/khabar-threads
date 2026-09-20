@@ -1,9 +1,9 @@
 {
-  "name": "news-pulse-backend",
+  "name": "khabar-threads-backend",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "News Pulse REST API: serves clusters, articles and timeline data; triggers the Python scraper",
+  "description": "Khabar Threads REST API: serves clusters, articles and timeline data; triggers the Python scraper",
   "engines": {
     "node": ">=22.18"
   },

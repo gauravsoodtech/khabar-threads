@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "News Pulse",
-  description: "Live news from BBC, NPR, the Guardian and Al Jazeera, grouped into stories on a timeline.",
+  title: "Khabar Threads",
+  description: "Live news from BBC, NPR, the Guardian and Al Jazeera, grouped into story threads on a timeline.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

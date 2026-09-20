@@ -111,7 +111,7 @@ export default function Page() {
     <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold tracking-widest text-slate-500 uppercase">News Pulse</p>
+          <p className="text-xs font-semibold tracking-widest text-slate-500 uppercase">Khabar Threads</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-900">Topic timeline</h1>
           <p className="mt-2 max-w-xl text-sm text-slate-600">
             Live articles from BBC, NPR, the Guardian and Al Jazeera, grouped into stories. Each bar runs from a

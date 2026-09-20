@@ -1,7 +1,7 @@
 # Render Blueprint: New > Blueprint > pick this repo. Render prompts for the two sync:false values.
 services:
   - type: web
-    name: news-pulse-api
+    name: khabar-threads-api
     runtime: docker
     plan: free
     region: singapore

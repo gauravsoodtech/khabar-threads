@@ -10,7 +10,7 @@ app.use(cors({ origin: origins.includes("*") ? true : origins }));
 
 app.get("/", (_req, res) => {
   res.json({
-    name: "News Pulse API",
+    name: "Khabar Threads API",
     endpoints: [
       "GET  /health",
       "GET  /clusters",
@@ -128,4 +128,4 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 
 const port = Number(process.env.PORT ?? 3001);
 await applySchema();
-app.listen(port, () => console.log(`News Pulse API listening on :${port}`));
+app.listen(port, () => console.log(`Khabar Threads API listening on :${port}`));
