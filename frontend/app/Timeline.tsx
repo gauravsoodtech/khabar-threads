@@ -3,17 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import { fmtTime, sourceColor, type TimelineCluster } from "./api";
 
-// Each cluster is a bar from its first article to its latest, on a shared time axis.
-// Bars that would overlap are pushed into separate lanes; the biggest stories claim the top lanes.
+// One ribbon per story, from its first article to its latest, on a shared axis.
+// Ribbons that would overlap go into separate lanes; the biggest stories get the top lanes.
 
-const AXIS_H = 44; // px reserved for the tick labels
-const LANE_H = 54; // px per lane: a label row above a bar
-const MIN_BAR_PX = 14; // a two-article story minutes apart is still a visible pill
+const AXIS_H = 54;
+const LANE_H = 66;
+const MIN_BAR_PX = 16;
 const HOUR = 3_600_000;
 
 type Props = {
   clusters: TimelineCluster[];
-  now: number; // when the data was generated, drawn as the "now" marker
+  now: number; // when the data was generated, drawn as the "abhi" marker
   selectedId: number | null;
   onSelect: (id: number) => void;
 };
@@ -21,6 +21,7 @@ type Props = {
 export default function TimelineChart({ clusters, now, selectedId, onSelect }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
+  const [hoverId, setHoverId] = useState<number | null>(null);
 
   useEffect(() => {
     const el = ref.current;
@@ -34,17 +35,20 @@ export default function TimelineChart({ clusters, now, selectedId, onSelect }: P
   const x = (t: number) => ((t - t0) / (t1 - t0)) * width;
   const { placed, laneCount } = packLanes(clusters, x, width);
   const ticks = makeTicks(t0, t1);
+  const biggest = Math.max(...clusters.map((c) => c.count));
 
   return (
     <div className="overflow-x-auto">
-      <div ref={ref} className="relative min-w-[720px]" style={{ height: AXIS_H + laneCount * LANE_H + 8 }}>
+      <div ref={ref} className="relative min-w-[760px]" style={{ height: AXIS_H + laneCount * LANE_H + 96 }}>
         {width > 0 && (
           <>
+            <div className="absolute inset-x-0 top-0 border-b-[3px] border-ink" style={{ height: AXIS_H }} />
+
             {ticks.map((tick) => (
-              <div key={tick.t} className="absolute top-0 bottom-0 border-l border-slate-100" style={{ left: x(tick.t) }}>
-                <span className="absolute top-1 left-1 text-[11px] whitespace-nowrap text-slate-500">{tick.time}</span>
+              <div key={tick.t} className="absolute top-0 bottom-0 border-l border-dashed border-ink/25" style={{ left: x(tick.t) }}>
+                <span className="absolute top-1.5 left-1.5 font-num text-xl leading-none whitespace-nowrap text-ink/70">{tick.time}</span>
                 {tick.day && (
-                  <span className="absolute top-5 left-1 text-[11px] font-semibold whitespace-nowrap text-slate-700">
+                  <span className="absolute top-[30px] left-1.5 font-sans text-[11px] leading-none font-bold tracking-wider whitespace-nowrap text-ink uppercase">
                     {tick.day}
                   </span>
                 )}
@@ -52,55 +56,80 @@ export default function TimelineChart({ clusters, now, selectedId, onSelect }: P
             ))}
 
             {now >= t0 && now <= t1 && (
-              <div className="absolute top-0 bottom-0 border-l border-dashed border-rose-400" style={{ left: x(now) }}>
-                <span className="absolute top-1 -translate-x-1/2 rounded bg-rose-500 px-1 text-[10px] font-medium text-white">
-                  now
+              <div className="absolute top-0 bottom-0 z-10 border-l-[3px] border-kumkum" style={{ left: x(now) }}>
+                <span className="absolute top-1 left-0 bg-kumkum px-1.5 py-0.5 font-num text-base leading-none tracking-widest text-paper uppercase">
+                  abhi
                 </span>
               </div>
             )}
 
             {placed.map(({ c, lane, left, barWidth, labelLeft }) => {
-              const barH = 12 + Math.round(c.intensity * 12); // stretch goal: bigger story, bolder bar
+              const barH = 14 + Math.round(c.intensity * 14);
               const laneTop = AXIS_H + lane * LANE_H;
               const selected = c.id === selectedId;
+              const fill = `color-mix(in oklab, var(--color-haldi), var(--color-rani) ${Math.round(c.intensity * 100)}%)`;
               return (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => onSelect(c.id)}
-                  title={`${c.label}: ${c.count} articles, ${fmtTime(c.start)} to ${fmtTime(c.end)}`}
-                  className="group absolute text-left focus:outline-none"
-                  style={{ left, top: laneTop, height: LANE_H, width: Math.max(barWidth, 8) }}
-                >
-                  <span
-                    className={`absolute top-1 text-xs font-medium whitespace-nowrap transition ${
-                      selected ? "text-indigo-700" : "text-slate-800 group-hover:text-indigo-700"
-                    }`}
-                    style={{ left: labelLeft - left }}
+                <div key={c.id} className="absolute" style={{ left, top: laneTop, height: LANE_H, width: Math.max(barWidth, 8) }}>
+                  <button
+                    type="button"
+                    onClick={() => onSelect(c.id)}
+                    onMouseEnter={() => setHoverId(c.id)}
+                    onMouseLeave={() => setHoverId(null)}
+                    onFocus={() => setHoverId(c.id)}
+                    onBlur={() => setHoverId(null)}
+                    className="group block h-full w-full text-left focus:outline-none"
                   >
-                    {c.label}
-                    <span className="ml-1 text-slate-400">{c.count}</span>
-                  </span>
-                  <span
-                    className={`absolute left-0 block rounded-full transition group-hover:brightness-90 ${
-                      selected ? "ring-2 ring-indigo-500 ring-offset-1" : ""
-                    }`}
-                    style={{
-                      top: 24 + (24 - barH) / 2,
-                      height: barH,
-                      width: barWidth,
-                      background: `rgba(15, 23, 42, ${0.15 + c.intensity * 0.7})`,
-                    }}
-                  >
-                    {c.points.map((p, i) => (
-                      <span
-                        key={i}
-                        className="absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white"
-                        style={{ left: clamp(x(+new Date(p.t)) - left, 4, barWidth - 4), background: sourceColor(p.source) }}
-                      />
-                    ))}
-                  </span>
-                </button>
+                    <span
+                      className={`absolute top-3 font-sans text-[13px] leading-none font-semibold whitespace-nowrap ${
+                        selected ? "bg-ink px-1 text-paper" : "text-ink"
+                      }`}
+                      style={{ left: labelLeft - left }}
+                    >
+                      {c.label}
+                      <span className={`ml-1.5 font-num text-base ${selected ? "text-paper/70" : "text-ink/60"}`}>{c.count}</span>
+                      {c.count === biggest && clusters.length > 1 && (
+                        <span className="sticker pop ml-2 -rotate-3 bg-kumkum px-1.5 py-0.5 font-num text-xs leading-none tracking-widest text-paper uppercase">
+                          top thread
+                        </span>
+                      )}
+                    </span>
+                    <span
+                      className={`thread absolute left-0 block border-2 border-ink ${selected ? "ring-[3px] ring-ink ring-offset-2 ring-offset-paper" : ""}`}
+                      style={{
+                        top: 34 + (28 - barH) / 2,
+                        height: barH,
+                        width: barWidth,
+                        background: fill,
+                        boxShadow: "3px 3px 0 0 var(--color-ink)",
+                        animationDelay: `${lane * 70}ms`,
+                      }}
+                    >
+                      {c.points.map((p, i) => (
+                        <span
+                          key={i}
+                          className="bead absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-ink"
+                          style={{
+                            left: clamp(x(+new Date(p.t)) - left, 5, barWidth - 5),
+                            background: sourceColor(p.source),
+                            animationDelay: `${lane * 70 + 400 + i * 30}ms`,
+                          }}
+                        />
+                      ))}
+                    </span>
+                  </button>
+
+                  {hoverId === c.id && (
+                    <div
+                      className="pointer-events-none absolute z-20 w-72 border-[3px] border-ink bg-paper p-3 shadow-hard"
+                      style={{ left: labelLeft - left, top: LANE_H - 2 }}
+                    >
+                      <p className="font-sans text-sm leading-snug font-semibold text-ink">{c.latest_title}</p>
+                      <p className="mt-1.5 font-num text-lg leading-none text-ink/70">
+                        {c.count} articles · {fmtTime(c.start)} to {fmtTime(c.end)}
+                      </p>
+                    </div>
+                  )}
+                </div>
               );
             })}
           </>
@@ -116,7 +145,6 @@ function timeRange(clusters: TimelineCluster[]) {
   let start = Math.min(...clusters.map((c) => +new Date(c.start)));
   let end = Math.max(...clusters.map((c) => +new Date(c.end)));
   if (end - start < 6 * HOUR) {
-    // a very narrow window still needs a readable axis
     const mid = (start + end) / 2;
     start = mid - 3 * HOUR;
     end = mid + 3 * HOUR;
@@ -126,22 +154,22 @@ function timeRange(clusters: TimelineCluster[]) {
 }
 
 function packLanes(clusters: TimelineCluster[], x: (t: number) => number, width: number) {
+  const biggest = Math.max(...clusters.map((c) => c.count));
   const items = clusters
     .map((c) => {
       const left = x(+new Date(c.start));
       const barWidth = Math.max(MIN_BAR_PX, x(+new Date(c.end)) - left);
-      const labelWidth = c.label.length * 6.4 + 36; // rough text measure, enough to avoid collisions
-      const labelLeft = clamp(left, 0, Math.max(0, width - labelWidth)); // slide left rather than clip at the edge
-      // the horizontal room this item needs in its lane: bar and label together
+      const labelWidth = c.label.length * 7 + (c.count === biggest ? 130 : 44); // rough text measure, the top thread carries a sticker
+      const labelLeft = clamp(left, 0, Math.max(0, width - labelWidth)); // slide left instead of clipping
       const from = Math.min(left, labelLeft);
       const to = Math.max(left + barWidth, labelLeft + labelWidth);
       return { c, left, barWidth, labelLeft, from, to };
     })
-    .sort((a, b) => b.c.count - a.c.count || a.from - b.from); // biggest stories take the top lanes
+    .sort((a, b) => b.c.count - a.c.count || a.from - b.from);
 
   const laneEnds: number[] = [];
   const placed = items.map((item) => {
-    let lane = laneEnds.findIndex((end) => end + 16 <= item.from);
+    let lane = laneEnds.findIndex((end) => end + 18 <= item.from);
     if (lane === -1) {
       lane = laneEnds.length;
       laneEnds.push(0);
@@ -166,7 +194,7 @@ function makeTicks(t0: number, t1: number) {
     const newDay = d.getHours() === 0 && d.getMinutes() === 0;
     ticks.push({
       t,
-      time: d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }),
+      time: d.toLocaleTimeString(undefined, { hour: "numeric" }),
       day: newDay || ticks.length === 0 ? d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : null,
     });
   }

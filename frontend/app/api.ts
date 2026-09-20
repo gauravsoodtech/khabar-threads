@@ -10,6 +10,7 @@ export type TimelineCluster = {
   start: string;
   end: string;
   sources: string[];
+  latest_title: string;
   points: Point[];
   intensity: number; // count / largest cluster's count, 0..1
 };
@@ -28,6 +29,7 @@ export type Article = {
   body: string | null;
   published_at: string;
 };
+export type Latest = { id: number; title: string; source: string; url: string; published_at: string; cluster_id: number | null };
 export type ClusterDetail = { id: number; label: string; created_at: string; articles: Article[] };
 export type Job = {
   id: string;
@@ -36,6 +38,7 @@ export type Job = {
   finishedAt: string | null;
   error: string | null;
   summary: Record<string, unknown> | null;
+  log: string;
 };
 
 export class ApiError extends Error {
@@ -57,9 +60,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** Render's free tier sleeps after 15 minutes idle and takes up to a minute to wake. A network
- *  error or 5xx in that window is retried, with a callback so the UI can say so; a real 4xx is
- *  thrown straight away. */
+// The API sleeps on Render's free tier and takes up to a minute to wake. Network errors
+// and 5xx in that window get retried; a real 4xx is thrown straight away.
 export async function getTimeline(onWaiting?: (attempt: number) => void): Promise<Timeline> {
   for (let attempt = 1; ; attempt++) {
     try {
@@ -72,10 +74,11 @@ export async function getTimeline(onWaiting?: (attempt: number) => void): Promis
   }
 }
 
+export const getLatest = (limit = 15) => request<Latest[]>(`/articles?limit=${limit}`);
 export const getCluster = (id: number) => request<ClusterDetail>(`/clusters/${id}`);
 export const getJob = (id: string) => request<Job>(`/ingest/status/${id}`);
 
-/** 202 means started, 409 means one is already running: either way there is a job id to follow. */
+// 202 means started, 409 means one is already running; either way there is a job to follow.
 export async function triggerIngest(): Promise<string> {
   try {
     const { jobId } = await request<{ jobId: string }>("/ingest/trigger", { method: "POST" });
@@ -87,12 +90,14 @@ export async function triggerIngest(): Promise<string> {
 }
 
 const SOURCE_COLORS: Record<string, string> = {
-  BBC: "#b91c1c",
-  NPR: "#2563eb",
-  Guardian: "#0f766e",
-  "Al Jazeera": "#d97706",
+  BBC: "#c8102e",
+  NPR: "#2447d0",
+  Guardian: "#0e7c7b",
+  "Al Jazeera": "#f2a900",
 };
-export const sourceColor = (source: string) => SOURCE_COLORS[source] ?? "#64748b";
+export const sourceColor = (source: string) => SOURCE_COLORS[source] ?? "#6b6560";
+// ink on the marigold, paper on everything else
+export const sourceText = (source: string) => (source === "Al Jazeera" ? "#141210" : "#f4ead8");
 
 const timeFormat = new Intl.DateTimeFormat(undefined, {
   weekday: "short",
@@ -102,3 +107,11 @@ const timeFormat = new Intl.DateTimeFormat(undefined, {
   minute: "2-digit",
 });
 export const fmtTime = (iso: string) => timeFormat.format(new Date(iso));
+
+export function timeAgo(iso: string, now = Date.now()): string {
+  const mins = Math.max(0, Math.round((now - +new Date(iso)) / 60000));
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} h ago`;
+  return `${Math.round(hours / 24)} d ago`;
+}

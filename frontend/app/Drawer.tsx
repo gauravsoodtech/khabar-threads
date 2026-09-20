@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fmtTime, getCluster, sourceColor, type ClusterDetail } from "./api";
+import { fmtTime, getCluster, sourceColor, sourceText, timeAgo, type ClusterDetail } from "./api";
 
-// Cluster detail: every article in the story, oldest first. Mounted with key={clusterId}
-// by the page, so switching clusters starts from a clean state.
+// One thread, every article in it, oldest first. The page mounts this with key={clusterId},
+// so switching threads starts from a clean state.
 
 type Props = { clusterId: number; onClose: () => void };
 
@@ -32,52 +32,69 @@ export default function Drawer({ clusterId, onClose }: Props) {
   const sources = Array.from(new Set(articles.map((a) => a.source)));
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end" role="dialog" aria-modal="true" aria-label="Cluster detail">
-      <div className="absolute inset-0 bg-slate-900/30" onClick={onClose} />
-      <aside className="relative flex h-full w-full max-w-lg flex-col overflow-y-auto bg-white shadow-2xl">
-        <div className="sticky top-0 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4">
-          <div>
-            <p className="text-xs font-semibold tracking-widest text-slate-500 uppercase">Topic</p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-900">{detail?.label ?? "Loading…"}</h2>
-            {articles.length > 0 && (
-              <p className="mt-1 text-sm text-slate-500">
-                {articles.length} articles from {sources.join(", ")} · {fmtTime(articles[0].published_at)} to{" "}
-                {fmtTime(articles[articles.length - 1].published_at)}
-              </p>
-            )}
+    <div className="fixed inset-0 z-40 flex justify-end" role="dialog" aria-modal="true" aria-label="Thread detail">
+      <div className="absolute inset-0 bg-ink/45" onClick={onClose} />
+      <aside className="drawer relative flex h-full w-full max-w-lg flex-col overflow-y-auto border-l-[3px] border-ink bg-paper">
+        <div className="sticky top-0 z-10 border-b-[3px] border-ink bg-paper px-6 py-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <span className="sticker -rotate-2 bg-haldi px-2 py-0.5 font-num text-lg leading-none tracking-[0.2em] uppercase">
+                thread
+              </span>
+              <h2 className="mt-3 font-display text-3xl leading-tight break-words">{detail?.label ?? "loading"}</h2>
+              {articles.length > 0 && (
+                <p className="mt-1 font-num text-lg leading-tight text-ink/70">
+                  {articles.length} articles from {sources.join(", ")} · {fmtTime(articles[0].published_at)} to{" "}
+                  {fmtTime(articles[articles.length - 1].published_at)}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="sticker btn-press shrink-0 bg-paper px-3 py-1 font-num text-xl leading-none tracking-widest uppercase"
+            >
+              close
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-          >
-            ✕
-          </button>
         </div>
 
-        {error && <p className="px-6 py-4 text-sm text-rose-600">{error}</p>}
+        {error && <p className="px-6 py-4 font-sans text-sm text-kumkum">{error}</p>}
 
-        <ol className="divide-y divide-slate-100 px-6">
+        {!detail && !error && (
+          <div className="space-y-4 px-6 py-6">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="skeleton h-28 border-[3px] border-ink" />
+            ))}
+          </div>
+        )}
+
+        <ol className="px-6 pt-2 pb-10">
           {articles.map((a) => (
-            <li key={a.id} className="py-4">
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <span className="h-2 w-2 rounded-full" style={{ background: sourceColor(a.source) }} />
-                <span className="font-medium text-slate-700">{a.source}</span>
-                <span>·</span>
-                <time dateTime={a.published_at}>{fmtTime(a.published_at)}</time>
+            <li key={a.id} className="mt-4 border-[3px] border-ink bg-paper p-4 shadow-hard">
+              <div className="flex flex-wrap items-center gap-3">
+                <span
+                  className="sticker -rotate-2 px-2 py-0.5 font-num text-base leading-none tracking-wider uppercase"
+                  style={{ background: sourceColor(a.source), color: sourceText(a.source) }}
+                >
+                  {a.source}
+                </span>
+                <time dateTime={a.published_at} className="font-num text-lg leading-none text-ink/70">
+                  {fmtTime(a.published_at)} · {timeAgo(a.published_at)}
+                </time>
               </div>
               <a
                 href={a.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-1 block text-base font-medium text-slate-900 hover:text-indigo-700"
+                className="mt-3 block font-sans text-lg leading-snug font-bold text-ink underline decoration-rani decoration-[3px] underline-offset-4 hover:bg-haldi"
               >
-                {a.title} <span className="text-slate-400">↗</span>
+                {a.title} ↗
               </a>
-              {a.summary && <p className="mt-1 line-clamp-2 text-sm text-slate-600">{a.summary}</p>}
-              <p className="mt-1 text-xs text-slate-400">
-                {a.body ? `Full text extracted, ${a.body.split(/\s+/).length} words` : "Full text not available for this page"}
+              {a.summary && <p className="mt-2 line-clamp-3 font-sans text-sm text-ink/80">{a.summary}</p>}
+              <p className="mt-2 font-num text-base leading-none tracking-wider text-ink/50 uppercase">
+                {a.body ? `full text pulled · ${a.body.split(/\s+/).length} words` : "full text not available for this page"}
               </p>
             </li>
           ))}

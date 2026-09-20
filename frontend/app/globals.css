@@ -1,10 +1,139 @@
 @import "tailwindcss";
 
-@theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@theme {
+  --color-paper: #f4ead8;
+  --color-paper-2: #e6d9bf;
+  --color-ink: #141210;
+  --color-haldi: #ffd23f;
+  --color-genda: #f2a900;
+  --color-rani: #ff2d78;
+  --color-peacock: #0e7c7b;
+  --color-kumkum: #c8102e;
+  --color-npr: #2447d0;
+
+  --font-display: var(--font-rozha);
+  --font-sans: var(--font-mukta);
+  --font-num: var(--font-teko);
+
+  --shadow-hard: 4px 4px 0 0 #141210;
+  --shadow-hard-lg: 8px 8px 0 0 #141210;
 }
 
-body {
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+/* print grain over everything, clicks pass through */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.sticker {
+  display: inline-block;
+  border: 3px solid var(--color-ink);
+  box-shadow: var(--shadow-hard);
+}
+
+.btn-press {
+  transition: translate 80ms ease, box-shadow 80ms ease;
+}
+.btn-press:hover {
+  translate: -1px -1px;
+  box-shadow: 5px 5px 0 0 var(--color-ink);
+}
+.btn-press:active {
+  translate: 4px 4px;
+  box-shadow: none;
+}
+
+.live-dot {
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  margin-right: 0.45em;
+  border-radius: 50%;
+  background: var(--color-paper);
+  animation: pulse-dot 1.3s ease-in-out infinite;
+}
+
+.stripes {
+  background-image: repeating-linear-gradient(45deg, var(--color-haldi) 0 12px, var(--color-ink) 12px 24px);
+  background-size: 34px 34px;
+  animation: stripes 0.8s linear infinite;
+}
+
+.skeleton {
+  background-image: repeating-linear-gradient(45deg, var(--color-paper-2) 0 10px, var(--color-paper) 10px 20px);
+  background-size: 28px 28px;
+  animation: stripes 1.2s linear infinite;
+}
+
+.ticker-track {
+  animation: ticker 90s linear infinite;
+}
+.ticker:hover .ticker-track {
+  animation-play-state: paused;
+}
+
+.rise {
+  animation: rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.pop {
+  animation: pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
+  animation-delay: 0.25s;
+}
+.thread {
+  transform-origin: left center;
+  animation: grow 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transition: box-shadow 120ms ease;
+}
+.thread:hover {
+  box-shadow: 5px 5px 0 0 var(--color-ink) !important;
+}
+.bead {
+  animation: bead 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
+}
+.drawer {
+  animation: slide-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes ticker {
+  to { transform: translateX(-50%); }
+}
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.7); opacity: 0.45; }
+}
+@keyframes stripes {
+  to { background-position: 34px 0; }
+}
+@keyframes rise {
+  from { transform: translateY(26px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes pop {
+  from { transform: scale(0.4); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes bead {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+@keyframes slide-in {
+  from { transform: translateX(100%); }
+  to { transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
