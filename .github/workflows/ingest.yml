@@ -1,0 +1,24 @@
+# The scheduler: every 6 hours ask the live API to scrape and re-cluster.
+# Needs one repository variable: API_URL (the Render service URL, no trailing slash).
+name: ingest
+
+on:
+  schedule:
+    - cron: "0 */6 * * *" # UTC
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST /ingest/trigger
+        run: |
+          code=$(curl --silent --output /dev/stderr --write-out "%{http_code}" \
+            --request POST --retry 8 --retry-delay 15 --retry-all-errors --max-time 120 \
+            "${{ vars.API_URL }}/ingest/trigger")
+          echo
+          echo "HTTP $code"
+          case "$code" in
+            202|409) exit 0 ;;   # started, or one was already running: both fine
+            *) exit 1 ;;
+          esac
