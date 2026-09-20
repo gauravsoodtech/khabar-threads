@@ -2,7 +2,7 @@
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").replace(/\/+$/, "");
 
-export type Point = { t: string; source: string };
+export type Point = { t: string; source: string; title: string };
 export type TimelineCluster = {
   id: number;
   label: string;
@@ -16,6 +16,7 @@ export type TimelineCluster = {
 };
 export type Timeline = {
   generatedAt: string;
+  lastFetch: string | null; // when the scraper last stored anything
   range: { start: string; end: string } | null;
   sources: { source: string; count: number }[];
   clusters: TimelineCluster[];

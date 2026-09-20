@@ -9,12 +9,14 @@ import {
   getTimeline,
   sourceColor,
   sourceText,
+  timeAgo,
   triggerIngest,
   type Latest,
   type Timeline,
   type TimelineCluster,
 } from "./api";
 import Drawer from "./Drawer";
+import Legend, { setLegendDismissed, useLegendDismissed } from "./Legend";
 import Ticker from "./Ticker";
 import TimelineChart from "./Timeline";
 import TopThreads from "./TopThreads";
@@ -31,14 +33,21 @@ type Refresh =
   | { state: "done"; message: string }
   | { state: "failed"; message: string };
 
+const HOUR = 3_600_000;
+const PERIODS = { "6h": 6 * HOUR, "24h": 24 * HOUR, all: Infinity } as const;
+type Period = keyof typeof PERIODS;
+
 export default function Page() {
   const [timeline, setTimeline] = useState<Timeline | null>(null);
   const [latest, setLatest] = useState<Latest[]>([]);
   const [load, setLoad] = useState<Load>({ state: "loading" });
   const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const [period, setPeriod] = useState<Period>("all");
+  const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<number | null>(null);
   const [refresh, setRefresh] = useState<Refresh>({ state: "idle" });
   const [progress, setProgress] = useState("");
+  const legendDismissed = useLegendDismissed();
 
   const reload = useCallback(async (quiet = false) => {
     try {
@@ -114,8 +123,9 @@ export default function Page() {
     });
   }
 
-  const visible = useMemo(() => filterBySource(timeline?.clusters ?? [], hidden), [timeline, hidden]);
+  const visible = useMemo(() => filterThreads(timeline, hidden, period, query), [timeline, hidden, period, query]);
   const sources = timeline?.sources ?? [];
+  const totalArticles = sources.reduce((n, s) => n + s.count, 0);
   const running = refresh.state === "running";
   const status =
     refresh.state === "running"
@@ -197,14 +207,66 @@ export default function Page() {
           </section>
         )}
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        {load.state === "ready" && !legendDismissed && <Legend onClose={() => setLegendDismissed(true)} />}
+
+        {timeline && (
+          <section className="mt-6 flex flex-wrap items-center gap-3" aria-label="Search and time window">
+            <label className="sticker flex items-center gap-2 bg-paper px-3 py-1.5">
+              <span className="font-num text-lg leading-none tracking-widest text-ink/60 uppercase">search</span>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="any word from a headline"
+                className="w-56 bg-transparent font-sans text-sm outline-none placeholder:text-ink/40"
+              />
+              {query && (
+                <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="font-num text-lg leading-none">
+                  ✕
+                </button>
+              )}
+            </label>
+            <span className="font-sans text-xs text-ink/60">
+              {visible.length} of {plural(timeline.clusters.length, "thread")}
+            </span>
+            <div className="ml-auto flex items-center gap-2">
+              <span className="font-sans text-xs text-ink/60">show</span>
+              {(Object.keys(PERIODS) as Period[]).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPeriod(p)}
+                  aria-pressed={period === p}
+                  className={`sticker btn-press px-3 py-1 font-num text-lg leading-none tracking-widest uppercase ${
+                    period === p ? "bg-ink text-haldi" : "bg-paper text-ink"
+                  }`}
+                >
+                  {p === "all" ? "all" : `last ${p}`}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
           <section className="rise relative overflow-hidden border-[3px] border-ink bg-paper shadow-hard-lg" style={{ animationDelay: "0.1s" }}>
             <div aria-hidden className="pointer-events-none absolute right-2 -bottom-20 font-display text-[18rem] leading-none text-ink/[0.045] select-none">
               खबर
             </div>
-            <div className="relative flex items-center justify-between gap-4 border-b-[3px] border-ink px-4 py-2">
+            <div className="relative flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b-[3px] border-ink px-4 py-2">
               <span className="font-num text-2xl leading-none tracking-[0.15em] uppercase">the timeline</span>
-              <span className="hidden font-sans text-xs text-ink/60 sm:block">beads are articles · red flag is now · hover a thread for its latest headline</span>
+              {timeline && (
+                <span className="flex items-center gap-3 font-num text-lg leading-none text-ink/70">
+                  {plural(totalArticles, "article")} · {plural(sources.length, "source")} · {plural(visible.length, "thread")}
+                  {timeline.lastFetch && ` · fetched ${timeAgo(timeline.lastFetch, +new Date(timeline.generatedAt))}`}
+                  <button
+                    type="button"
+                    onClick={() => setLegendDismissed(false)}
+                    className="font-sans text-xs text-ink underline decoration-rani decoration-2 underline-offset-4 hover:text-rani"
+                  >
+                    how to read
+                  </button>
+                </span>
+              )}
             </div>
             <div className="relative p-4">
               {load.state === "loading" && <Notice>loading the timeline</Notice>}
@@ -216,7 +278,13 @@ export default function Page() {
               )}
               {load.state === "error" && <Notice tone="error">could not reach the server: {load.message}</Notice>}
               {load.state === "ready" && visible.length === 0 && (
-                <Notice>no threads to show yet. press fetch latest to pull today&apos;s news.</Notice>
+                <Notice>
+                  {query.trim()
+                    ? `nothing matches "${query.trim()}". try another word.`
+                    : timeline && timeline.clusters.length > 0
+                      ? "nothing in this window. try a wider one."
+                      : "no threads to show yet. press fetch latest to pull today's news."}
+                </Notice>
               )}
               {load.state === "ready" && visible.length > 0 && timeline && (
                 <TimelineChart clusters={visible} now={+new Date(timeline.generatedAt)} selectedId={selected} onSelect={setSelected} />
@@ -244,6 +312,8 @@ export default function Page() {
   );
 }
 
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
 function Notice({ children, spinner, tone }: { children: React.ReactNode; spinner?: boolean; tone?: "error" }) {
   return (
     <div className="flex items-center justify-center px-4 py-16">
@@ -260,12 +330,16 @@ function Notice({ children, spinner, tone }: { children: React.ReactNode; spinne
   );
 }
 
-// Hide sources on the client: drop their articles from every thread and recompute spans and sizes.
-function filterBySource(clusters: TimelineCluster[], hidden: Set<string>): TimelineCluster[] {
-  if (hidden.size === 0) return clusters;
-  const kept = clusters.flatMap((c) => {
-    const points = c.points.filter((p) => !hidden.has(p.source));
+// Everything the reader can narrow by, in one pass: hidden sources, the time window, the search.
+// Each thread keeps only the articles that survive, and its span and size are recomputed from them.
+function filterThreads(timeline: Timeline | null, hidden: Set<string>, period: Period, query: string): TimelineCluster[] {
+  if (!timeline) return [];
+  const cutoff = +new Date(timeline.generatedAt) - PERIODS[period];
+  const q = query.trim().toLowerCase();
+  const kept = timeline.clusters.flatMap((c) => {
+    const points = c.points.filter((p) => !hidden.has(p.source) && +new Date(p.t) >= cutoff);
     if (points.length === 0) return [];
+    if (q && !c.label.includes(q) && !points.some((p) => p.title.toLowerCase().includes(q))) return [];
     return [
       {
         ...c,
@@ -273,7 +347,7 @@ function filterBySource(clusters: TimelineCluster[], hidden: Set<string>): Timel
         count: points.length,
         start: points[0].t,
         end: points[points.length - 1].t,
-        sources: c.sources.filter((s) => !hidden.has(s)),
+        sources: Array.from(new Set(points.map((p) => p.source))),
       },
     ];
   });
