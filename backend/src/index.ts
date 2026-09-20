@@ -13,6 +13,7 @@ app.get("/", (_req, res) => {
     name: "Khabar Threads API",
     endpoints: [
       "GET  /health",
+      "GET  /articles?limit=15",
       "GET  /clusters",
       "GET  /clusters/:id",
       "GET  /timeline",
@@ -37,6 +38,20 @@ const CLUSTER_SUMMARY_SQL = `
   JOIN articles a ON a.cluster_id = c.id
   GROUP BY c.id
   ORDER BY start`;
+
+// Newest articles across every source, clustered or not. Feeds the headline ticker.
+app.get("/articles", async (req, res) => {
+  const limit = req.query.limit === undefined ? 15 : Number(req.query.limit);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
+    res.status(400).json({ error: "limit must be a whole number from 1 to 50" });
+    return;
+  }
+  const { rows } = await pool.query(
+    "SELECT id, title, source, url, published_at, cluster_id FROM articles ORDER BY published_at DESC LIMIT $1",
+    [limit],
+  );
+  res.json(rows);
+});
 
 app.get("/clusters", async (_req, res) => {
   const { rows } = await pool.query(CLUSTER_SUMMARY_SQL);
@@ -72,6 +87,7 @@ app.get("/timeline", async (_req, res) => {
              MIN(a.published_at)                           AS start,
              MAX(a.published_at)                           AS "end",
              array_agg(DISTINCT a.source ORDER BY a.source) AS sources,
+             (array_agg(a.title ORDER BY a.published_at DESC))[1] AS latest_title,
              json_agg(json_build_object('t', a.published_at, 'source', a.source)
                       ORDER BY a.published_at)             AS points
       FROM clusters c

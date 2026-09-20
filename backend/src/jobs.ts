@@ -13,7 +13,8 @@ export type Job = {
   log: string; // tail of the scraper's stderr, useful when a job fails
 };
 
-// ponytail: in-memory job store, one Render instance. Move to a jobs table if this ever runs on more than one.
+// Jobs live in memory. There is one instance on Render, so that is enough; a restart
+// forgets them and the frontend handles the 404.
 const jobs = new Map<string, Job>();
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 

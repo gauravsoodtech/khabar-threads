@@ -45,7 +45,7 @@ def cluster(articles: list[dict], min_shared: int = 3) -> list[dict]:
         for h, a in zip(heads, articles)
     ]
     parent = list(range(len(articles)))
-    # ponytail: O(n^2) pairwise scan; fine for a few hundred articles, index by word if it ever sees tens of thousands.
+    # every pair; a few hundred articles is nothing
     for i, j in combinations(range(len(articles)), 2):
         if len(toks[i] & toks[j]) >= min_shared and heads[i] & heads[j]:
             parent[find_root(parent, i)] = find_root(parent, j)  # union
