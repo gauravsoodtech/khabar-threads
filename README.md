@@ -133,7 +133,7 @@ works cold before the first ingest.
 | `GET /articles?limit=15` | the newest articles across all sources with their `cluster_id`, for the headline ticker; `400` unless `limit` is 1 to 50 |
 | `GET /clusters` | `[{id, label, count, start, end, sources}]` ordered by start |
 | `GET /clusters/:id` | the cluster with its articles sorted chronologically; `400` if `:id` is not a positive integer, `404` if unknown |
-| `GET /timeline` | `{generatedAt, range, sources, clusters: [{id, label, count, start, end, intensity, sources, latest_title, points}]}` |
+| `GET /timeline` | `{generatedAt, lastFetch, range, sources, clusters: [{id, label, count, start, end, intensity, sources, latest_title, points: [{t, source, title}]}]}` |
 | `POST /ingest/trigger` | `202 {jobId}`; `409 {jobId}` if a job is already running |
 | `GET /ingest/status/:jobId` | `{status: queued, running, done, failed, summary, error, log}`; `400` if not a UUID, `404` if unknown |
 
@@ -168,6 +168,13 @@ are named after what they are here: haldi, genda, rani, peacock, kumkum.
   article in the thread, oldest first: source, time and "2 h ago", headline linking to the original,
   summary, and whether the full text was pulled.
 - **Filter by source**: the source stickers toggle; spans, sizes and lanes are recomputed on the client.
+- **Search and time window**: a search box matches any word in a thread's label or in any of its
+  headlines, and three buttons narrow the view to the last 6 hours, the last 24 hours or everything.
+  All three filters (source, window, search) run in one pass on the client, no extra requests.
+- **How to read this** ([`Legend.tsx`](frontend/app/Legend.tsx)): a strip on first visit explains
+  ribbons, beads and thickness in one line each; "got it" hides it (remembered in localStorage) and
+  "how to read" in the timeline header brings it back. A numbers line beside it gives articles,
+  sources, threads and when the scraper last stored anything.
 - **Fetch latest**: calls `POST /ingest/trigger`, polls `/ingest/status/:jobId` every 2 s and shows the
   scraper's own last log line while it runs ("feed BBC: 25 items", "stored 12 new articles"), then
   reloads and reports what it found.
