@@ -11,6 +11,8 @@ project "News Pulse"; this is my build of it.)
 | Live API | https://khabar-threads-api.onrender.com (`GET /` lists the endpoints; free tier, first request after idle takes up to a minute) |
 | Repo layout | [`scraper/`](scraper) Python · [`backend/`](backend) Node.js · [`frontend/`](frontend) Next.js |
 
+![Khabar Threads: the timeline with today's threads](docs/screenshot.png)
+
 ## Architecture
 
 ```
@@ -128,9 +130,10 @@ works cold before the first ingest.
 |---|---|
 | `GET /` | endpoint index |
 | `GET /health` | `{ok: true}` after a `SELECT 1` (Render's health check) |
+| `GET /articles?limit=15` | the newest articles across all sources with their `cluster_id`, for the headline ticker; `400` unless `limit` is 1 to 50 |
 | `GET /clusters` | `[{id, label, count, start, end, sources}]` ordered by start |
 | `GET /clusters/:id` | the cluster with its articles sorted chronologically; `400` if `:id` is not a positive integer, `404` if unknown |
-| `GET /timeline` | `{generatedAt, range, sources, clusters: [{id, label, count, start, end, intensity, sources, points}]}` |
+| `GET /timeline` | `{generatedAt, range, sources, clusters: [{id, label, count, start, end, intensity, sources, latest_title, points}]}` |
 | `POST /ingest/trigger` | `202 {jobId}`; `409 {jobId}` if a job is already running |
 | `GET /ingest/status/:jobId` | `{status: queued, running, done, failed, summary, error, log}`; `400` if not a UUID, `404` if unknown |
 
@@ -144,20 +147,34 @@ and the frontend treats a `404` while polling as "restarted, reload the data".
 
 ## Part 3: frontend
 
-Next.js 16 (App Router, TypeScript, Tailwind), one client page:
+Next.js 16 (App Router, TypeScript, Tailwind v4), one client page, no chart library. The look is an
+Indian newsstand: cream paper with a print grain, thick ink borders, stickers set at slight angles, a
+black breaking-news ticker, and a masthead set in Rozha One, an Indian Type Foundry face that reads
+like a Hindi daily's nameplate (body text in Mukta, numerals in Teko, both Devanagari-aware). Colours
+are named after what they are here: haldi, genda, rani, peacock, kumkum.
 
-- **Timeline** ([`Timeline.tsx`](frontend/app/Timeline.tsx)): a custom time axis (hour ticks, day
-  labels, a "now" marker). Each cluster is a bar from its first article to its latest; bars that would
-  overlap are packed into lanes, biggest stories on top. Bar thickness and darkness scale with the
-  cluster's size (stretch goal), dots on the bar mark individual articles coloured by source.
-- **Cluster detail** ([`Drawer.tsx`](frontend/app/Drawer.tsx)): click a bar to see its articles with
-  source, published time, summary and a link to the original.
-- **Filter by source**: chips toggle sources; spans and sizes are recomputed client-side.
-- **Refresh data**: calls `POST /ingest/trigger`, polls `/ingest/status/:jobId` every 2 s, reloads the
-  timeline when the job finishes and reports what it found.
-- **Auto-refresh** (stretch goal): the timeline reloads quietly every 60 s while the tab is visible.
-- **Cold start**: the API's free tier sleeps when idle; the page shows "Waking up the API" and retries
-  instead of an error.
+- **Ticker** ([`Ticker.tsx`](frontend/app/Ticker.tsx)): the newest 15 headlines from `GET /articles`
+  scroll across the top like a news channel's breaking bar; hover pauses it, a click opens that
+  story's thread (or the article itself if it is not in a thread yet).
+- **Timeline** ([`Timeline.tsx`](frontend/app/Timeline.tsx)): a ruler with hour ticks and day labels,
+  and one ribbon per thread from its first article to its latest. Ribbons that would overlap go into
+  separate lanes, biggest threads on top. Thickness and colour scale with the thread's size (haldi for
+  small, rani for the biggest, which also gets a "top thread" sticker), beads on the ribbon are the
+  individual articles coloured by source, a red "abhi" flag marks now, and hovering a ribbon shows its
+  latest headline and span.
+- **Top threads rail** ([`TopThreads.tsx`](frontend/app/TopThreads.tsx)): the three biggest threads
+  with their latest headline; click one to open it.
+- **Thread detail** ([`Drawer.tsx`](frontend/app/Drawer.tsx)): slides in from the right with every
+  article in the thread, oldest first: source, time and "2 h ago", headline linking to the original,
+  summary, and whether the full text was pulled.
+- **Filter by source**: the source stickers toggle; spans, sizes and lanes are recomputed on the client.
+- **Fetch latest**: calls `POST /ingest/trigger`, polls `/ingest/status/:jobId` every 2 s and shows the
+  scraper's own last log line while it runs ("feed BBC: 25 items", "stored 12 new articles"), then
+  reloads and reports what it found.
+- **Live**: the timeline reloads quietly every 60 s while the tab is visible.
+- **Cold start**: the API's free tier sleeps when idle; the page says so and retries instead of erroring.
+- Motion (ribbons growing in, stickers popping, the ticker) is CSS only and is switched off for users
+  who prefer reduced motion.
 
 Cross-source story merging (the third stretch goal) was not attempted.
 
